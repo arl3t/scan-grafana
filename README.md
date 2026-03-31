@@ -194,4 +194,4 @@ Usa estas herramientas **solo en redes y sistemas para los que tengas autorizaci
 
 ## Licencia
 
-Define la licencia de tu proyecto en este repositorio.
+Este proyecto se distribuye bajo la **MIT License**. Consulta el fichero [`LICENSE`](LICENSE).
