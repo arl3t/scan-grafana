@@ -104,13 +104,15 @@ Import-Module "$HOME/Blue-Team/AtomicRedTeam/invoke-atomicredteam/Invoke-AtomicR
 
 ### Ejecución manual (sin Invoke-AtomicRedTeam)
 
-1. Entra en el directorio del test, por ejemplo:
+1. Entra en el directorio de la técnica (ruta de referencia en este despliegue):
+
+**Ruta:** `/home/horus/Blue-Team/AtomicRedTeam/atomic-red-team/atomics/T1059.003`
 
 ```bash
-cd /home/horus/Blue-Team/AtomicRedTeam/atomic-red-team/atomics/T1059.003/
+cd /home/horus/Blue-Team/AtomicRedTeam/atomic-red-team/atomics/T1059.003
 ```
 
-2. Abre el `.md` del test y localiza **Atomic Test #N** para tu SO.
+2. Abre el `.md` del test (p. ej. `T1059.003.md` en esa carpeta) y localiza **Atomic Test #N** para tu SO.
 3. Ejecuta los comandos indicados **solo** en máquinas de laboratorio autorizadas.
 
 ### Invoke-AtomicRedTeam (recomendado)
