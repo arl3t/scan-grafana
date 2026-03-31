@@ -149,21 +149,21 @@ python3 maintenance.py -d nmap_scans.db export --sql "SELECT * FROM v_scan_summa
    - **Path**: ruta absoluta al fichero `nmap_scans.db` en el servidor donde corre el plugin (Grafana debe poder leer ese path).
 
 3. **Dashboards → Import** → sube `nmap-dashboard.json`.  
-   Asigna el datasource cuando el asistente lo pida (`DS_SQLITE`).
+   Asigna el datasource cuando el asistente lo pida (`DS_SQLITE`). El JSON usa **consultas directas** sobre `hosts`, `ports`, `scans` y `nse_scripts` (no depende de las vistas de `maintenance.py`, aunque puedes seguir ejecutando `init-views` para otros usos).
 
-4. Ejecuta al menos una vez:
+4. **Rango temporal:** para *Evolución por día* elige p. ej. **últimos 90 días**; con «Last 30 minutes» ese panel no tendrá puntos (los datos son por día de `imported_at`).
+
+5. *(Opcional)* Vistas para consultas manuales o export:
 
    ```bash
    python3 maintenance.py -d /ruta/a/nmap_scans.db init-views
    ```
 
-   para que existan las vistas usadas por el dashboard.
-
 ### Si un panel no muestra datos
 
-- Comprueba que la consulta funcione en el editor del plugin.
-- El panel de serie temporal usa epoch Unix derivado de `day_utc` en `v_scans_timeline`.
-- Ajusta el rango temporal del dashboard (arriba a la derecha); algunos paneles son tablas y no dependen del tiempo.
+- Comprueba la consulta en el editor del datasource SQLite.
+- **Serie temporal “por día”:** amplía el rango (p. ej. 90 días); «últimos 30 minutos» suele dejarla vacía.
+- **NSE en 0:** normal si los escaneos no usaron scripts (`--script`).
 
 ## Queries útiles (SQL)
 

@@ -38,6 +38,26 @@ def count_scans_total() -> int:
         return 0
 
 
+def scans_db_banner() -> tuple[int, str | None]:
+    """
+    Count rows in scans plus an optional error hint (missing table, unreadable file, etc.).
+    """
+    try:
+        with get_connection() as conn:
+            t = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scans' LIMIT 1"
+            ).fetchone()
+            if not t:
+                return (
+                    0,
+                    "No hay tabla «scans» (archivo vacío o sin import). Revisa el log del job: IMPORT_OK / IMPORT_FAIL.",
+                )
+            row = conn.execute("SELECT COUNT(*) AS c FROM scans").fetchone()
+        return int(row["c"]) if row else 0, None
+    except sqlite3.Error as e:
+        return 0, f"No se pudo leer SQLite: {e}"
+
+
 def sqlite_path_resolved() -> str:
     return str(config.SQLITE_PATH.resolve())
 

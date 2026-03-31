@@ -34,7 +34,7 @@ def _safe_target_display(t: str) -> str:
     return t[:500]
 
 
-def preview_pipeline_markdown(target_raw: str) -> str:
+def preview_pipeline_markdown(target_raw: str, preset_id: str = "standard") -> str:
     """
     Texto para la UI: comandos que se ejecutarán y destino de la base de datos.
     """
@@ -47,9 +47,10 @@ def preview_pipeline_markdown(target_raw: str) -> str:
         return f"**{e}** — escribe al menos un objetivo (IP, CIDR o lista separada por comas)."
 
     xml_example = str(xml_dir / "ui_<job_id>_<timestamp>.xml")
+    nmap_args = config.nmap_args_for_preset(preset_id)
     nmap_parts = [
         config.NMAP_BINARY,
-        *config.NMAP_EXTRA_ARGS,
+        *nmap_args,
         "-oX",
         xml_example,
         *nt.split(),
@@ -61,7 +62,9 @@ def preview_pipeline_markdown(target_raw: str) -> str:
         f"`{xml_dir}/ui_<job_id>_<timestamp>.xml`"
     )
     exists = "✓ existe" if config.NMAP_TO_SQLITE.is_file() else "✗ no encontrado (revisa ruta)"
+    plab = config.PRESET_LABELS.get(preset_id, preset_id)
     return (
+        f"**Perfil activo:** {plab} (`{preset_id}`)  \n"
         f"**Destino de datos:** `{db}`  \n"
         f"**Importador:** `{imp}` ({exists})  \n\n"
         "---\n\n"
@@ -106,34 +109,46 @@ class ScanManager:
         async with self._lock:
             return self.jobs.get(job_id)
 
-    async def start_scan(self, target: str, tag: str = "webui") -> str:
+    async def start_scan(self, target: str, tag: str = "webui", preset_id: str = "standard") -> str:
         nt = normalize_target(target)
         job_id = uuid.uuid4().hex[:12]
-        job = ScanJob(id=job_id, target=_safe_target_display(nt))
+        pid = (preset_id or "standard").strip().lower()
+        if pid not in config.NMAP_SCAN_PRESETS:
+            pid = config.SCAN_PRESET_STANDARD
+        job = ScanJob(id=job_id, target=_safe_target_display(nt), preset_id=pid)
         async with self._lock:
             self.jobs[job_id] = job
-        asyncio.create_task(self._run_pipeline(job, nt, tag))
+        asyncio.create_task(self._run_pipeline(job, nt, tag, pid))
         await self._notify_safe()
         return job_id
 
-    async def _run_pipeline(self, job: ScanJob, target: str, tag: str) -> None:
+    async def _run_pipeline(self, job: ScanJob, target: str, tag: str, preset_id: str) -> None:
         async with self._sem:
             job.status = ScanJobStatus.RUNNING
             job.started_at = datetime.now().timestamp()
-            job.append_log(f"[{job.id}] Inicio: {target}")
+            job.append_log(f"[{job.id}] Perfil: {preset_id} | Objetivo: {target}")
+            job.append_log(
+                "Rutas: DB="
+                + str(config.SQLITE_PATH.resolve())
+                + " | importador="
+                + str(config.NMAP_TO_SQLITE.resolve())
+                + " | XML="
+                + str(config.XML_OUTPUT_DIR.resolve())
+            )
             await self._notify_safe()
 
             config.XML_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
             xml_path = config.XML_OUTPUT_DIR / f"ui_{job.id}_{int(job.started_at)}.xml"
 
+            nmap_args = config.nmap_args_for_preset(preset_id)
             cmd = [
                 config.NMAP_BINARY,
-                *config.NMAP_EXTRA_ARGS,
+                *nmap_args,
                 "-oX",
                 str(xml_path),
                 *target.split(),
             ]
-            job.append_log("$ " + " ".join(cmd))
+            job.append_log("$ " + " ".join(shlex.quote(c) for c in cmd))
 
             try:
                 proc = await asyncio.create_subprocess_exec(
@@ -214,14 +229,16 @@ class ScanManager:
     def _import_xml_sync(xml_path: str, tag: str) -> str:
         import subprocess
 
-        if not config.NMAP_TO_SQLITE.is_file():
-            return "IMPORT_FAIL: nmap-to-sqlite.py no encontrado"
+        db_p = config.SQLITE_PATH.resolve()
+        imp_p = config.NMAP_TO_SQLITE.resolve()
+        if not imp_p.is_file():
+            return "IMPORT_FAIL: nmap-to-sqlite.py no encontrado en " + str(imp_p)
         r = subprocess.run(
             [
                 sys.executable,
-                str(config.NMAP_TO_SQLITE),
+                str(imp_p),
                 "-d",
-                str(config.SQLITE_PATH),
+                str(db_p),
                 "--tag",
                 tag,
                 xml_path,
@@ -229,11 +246,18 @@ class ScanManager:
             capture_output=True,
             text=True,
             timeout=600,
+            cwd=str(config.REPO_ROOT.resolve()),
         )
         if r.returncode != 0:
-            return f"IMPORT_FAIL: {r.stderr or r.stdout or r.returncode}"
+            err = "\n".join(
+                x for x in ((r.stderr or "").strip(), (r.stdout or "").strip()) if x
+            )
+            err = err or f"código de salida {r.returncode}"
+            if len(err) > 6000:
+                err = err[:6000] + "…"
+            return f"IMPORT_FAIL: {err}"
         try:
-            conn = sqlite3.connect(str(config.SQLITE_PATH.resolve()), timeout=30.0)
+            conn = sqlite3.connect(str(db_p), timeout=30.0)
             row = conn.execute(
                 """
                 SELECT s.scan_hash, s.imported_at,

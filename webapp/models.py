@@ -32,6 +32,7 @@ class ScanJob:
 
     id: str
     target: str
+    preset_id: str = "standard"
     status: ScanJobStatus = ScanJobStatus.QUEUED
     started_at: float | None = None
     finished_at: float | None = None

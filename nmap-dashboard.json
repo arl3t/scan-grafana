@@ -31,6 +31,7 @@
   "panels": [
     {
       "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "description": "KPIs usan solo tablas base (no requieren vistas). Si ves 0 en NSE, no hay filas en nse_scripts (escaneos sin scripts NSE).",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "thresholds"},
@@ -47,12 +48,13 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "/^value$/", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
           "queryText": "SELECT COUNT(*) AS value FROM hosts",
           "rawQueryText": "SELECT COUNT(*) AS value FROM hosts",
@@ -81,12 +83,13 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "/^value$/", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
           "queryText": "SELECT COUNT(*) AS value FROM ports WHERE state IS NULL OR LOWER(TRIM(state)) = 'open'",
           "rawQueryText": "SELECT COUNT(*) AS value FROM ports WHERE state IS NULL OR LOWER(TRIM(state)) = 'open'",
@@ -115,12 +118,13 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "/^value$/", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
           "queryText": "SELECT COUNT(*) AS value FROM scans",
           "rawQueryText": "SELECT COUNT(*) AS value FROM scans",
@@ -149,12 +153,13 @@
         "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
-        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "/^value$/", "values": false},
         "textMode": "auto"
       },
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
           "queryText": "SELECT COUNT(*) AS value FROM nse_scripts",
           "rawQueryText": "SELECT COUNT(*) AS value FROM nse_scripts",
@@ -167,6 +172,7 @@
     },
     {
       "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "description": "SQL directo sobre `hosts` (no usa vistas).",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -175,7 +181,14 @@
           },
           "mappings": []
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "host_count"},
+            "properties": [
+              {"id": "custom.hideFrom", "value": {"legend": false, "tooltip": false, "viz": false}}
+            ]
+          }
+        ]
       },
       "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
       "id": 5,
@@ -188,18 +201,20 @@
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
-          "queryText": "SELECT os_name, host_count FROM v_os_distribution LIMIT 12",
-          "rawQueryText": "SELECT os_name, host_count FROM v_os_distribution LIMIT 12",
+          "queryText": "SELECT COALESCE(NULLIF(TRIM(os_name), ''), '(sin OS)') AS os_name, CAST(COUNT(*) AS REAL) AS host_count FROM hosts WHERE state IS NULL OR LOWER(TRIM(state)) = 'up' GROUP BY LOWER(COALESCE(NULLIF(TRIM(os_name), ''), '(sin OS)')) ORDER BY host_count DESC LIMIT 12",
+          "rawQueryText": "SELECT COALESCE(NULLIF(TRIM(os_name), ''), '(sin OS)') AS os_name, CAST(COUNT(*) AS REAL) AS host_count FROM hosts WHERE state IS NULL OR LOWER(TRIM(state)) = 'up' GROUP BY LOWER(COALESCE(NULLIF(TRIM(os_name), ''), '(sin OS)')) ORDER BY host_count DESC LIMIT 12",
           "refId": "A",
           "timeColumns": []
         }
       ],
-      "title": "Distribución de SO (v_os_distribution)",
+      "title": "Distribución de SO",
       "type": "piechart"
     },
     {
       "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "description": "SQL directo sobre `ports` abiertos.",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -238,9 +253,10 @@
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
-          "queryText": "SELECT service_name, occurrences FROM v_top_services LIMIT 15",
-          "rawQueryText": "SELECT service_name, occurrences FROM v_top_services LIMIT 15",
+          "queryText": "SELECT MIN(service_name) AS service_name, CAST(COUNT(*) AS REAL) AS occurrences FROM ports WHERE (state IS NULL OR LOWER(TRIM(state)) = 'open') AND service_name IS NOT NULL AND TRIM(service_name) != '' GROUP BY LOWER(TRIM(service_name)) ORDER BY occurrences DESC LIMIT 15",
+          "rawQueryText": "SELECT MIN(service_name) AS service_name, CAST(COUNT(*) AS REAL) AS occurrences FROM ports WHERE (state IS NULL OR LOWER(TRIM(state)) = 'open') AND service_name IS NOT NULL AND TRIM(service_name) != '' GROUP BY LOWER(TRIM(service_name)) ORDER BY occurrences DESC LIMIT 15",
           "refId": "A",
           "timeColumns": []
         }
@@ -250,6 +266,7 @@
     },
     {
       "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "description": "Agrupa por día de `imported_at`. Amplía el rango temporal arriba (p. ej. últimos 90 días): con «Last 30 minutes» no habrá puntos.",
       "fieldConfig": {
         "defaults": {
           "color": {"mode": "palette-classic"},
@@ -283,14 +300,15 @@
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
-          "queryText": "SELECT CAST(strftime('%s', day_utc) AS INTEGER) AS time, scans_imported, hosts_recorded FROM v_scans_timeline ORDER BY day_utc ASC",
-          "rawQueryText": "SELECT CAST(strftime('%s', day_utc) AS INTEGER) AS time, scans_imported, hosts_recorded FROM v_scans_timeline ORDER BY day_utc ASC",
+          "queryText": "SELECT CAST(strftime('%s', date(imported_at)) AS INTEGER) AS time, COUNT(*) AS scans_imported, SUM((SELECT COUNT(*) FROM hosts h WHERE h.scan_hash = s.scan_hash)) AS hosts_recorded FROM scans s WHERE imported_at IS NOT NULL GROUP BY date(imported_at) ORDER BY time ASC",
+          "rawQueryText": "SELECT CAST(strftime('%s', date(imported_at)) AS INTEGER) AS time, COUNT(*) AS scans_imported, SUM((SELECT COUNT(*) FROM hosts h WHERE h.scan_hash = s.scan_hash)) AS hosts_recorded FROM scans s WHERE imported_at IS NOT NULL GROUP BY date(imported_at) ORDER BY time ASC",
           "refId": "A",
           "timeColumns": ["time"]
         }
       ],
-      "title": "Evolución: escaneos e hosts por día (imported_at)",
+      "title": "Evolución: escaneos e hosts por día",
       "type": "timeseries"
     },
     {
@@ -318,9 +336,10 @@
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
-          "queryText": "SELECT imported_at, tags, host_count, open_port_count, substr(command_line,1,120) AS cmd FROM v_scan_summary ORDER BY imported_at DESC LIMIT 100",
-          "rawQueryText": "SELECT imported_at, tags, host_count, open_port_count, substr(command_line,1,120) AS cmd FROM v_scan_summary ORDER BY imported_at DESC LIMIT 100",
+          "queryText": "SELECT s.imported_at, s.tags, (SELECT COUNT(*) FROM hosts h WHERE h.scan_hash = s.scan_hash) AS host_count, (SELECT COUNT(*) FROM ports p WHERE p.scan_hash = s.scan_hash AND (p.state IS NULL OR LOWER(TRIM(p.state)) = 'open')) AS open_port_count, substr(s.command_line, 1, 120) AS cmd FROM scans s ORDER BY datetime(s.imported_at) DESC LIMIT 100",
+          "rawQueryText": "SELECT s.imported_at, s.tags, (SELECT COUNT(*) FROM hosts h WHERE h.scan_hash = s.scan_hash) AS host_count, (SELECT COUNT(*) FROM ports p WHERE p.scan_hash = s.scan_hash AND (p.state IS NULL OR LOWER(TRIM(p.state)) = 'open')) AS open_port_count, substr(s.command_line, 1, 120) AS cmd FROM scans s ORDER BY datetime(s.imported_at) DESC LIMIT 100",
           "refId": "A",
           "timeColumns": []
         }
@@ -353,9 +372,10 @@
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
-          "queryText": "SELECT imported_at, host_addr, portid, protocol, service_name, product, tags FROM v_dangerous_open_ports ORDER BY imported_at DESC LIMIT 200",
-          "rawQueryText": "SELECT imported_at, host_addr, portid, protocol, service_name, product, tags FROM v_dangerous_open_ports ORDER BY imported_at DESC LIMIT 200",
+          "queryText": "SELECT s.imported_at, p.host_addr, p.portid, p.protocol, p.service_name, p.product, s.tags FROM ports p JOIN scans s ON s.scan_hash = p.scan_hash WHERE (p.state IS NULL OR LOWER(TRIM(p.state)) = 'open') AND p.portid IN (21,22,23,25,53,110,111,135,139,445,1433,1521,3306,3389,5432,5900,6379,8080,8443,9200,11211,27017) ORDER BY datetime(s.imported_at) DESC LIMIT 200",
+          "rawQueryText": "SELECT s.imported_at, p.host_addr, p.portid, p.protocol, p.service_name, p.product, s.tags FROM ports p JOIN scans s ON s.scan_hash = p.scan_hash WHERE (p.state IS NULL OR LOWER(TRIM(p.state)) = 'open') AND p.portid IN (21,22,23,25,53,110,111,135,139,445,1433,1521,3306,3389,5432,5900,6379,8080,8443,9200,11211,27017) ORDER BY datetime(s.imported_at) DESC LIMIT 200",
           "refId": "A",
           "timeColumns": []
         }
@@ -388,9 +408,10 @@
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
-          "queryText": "SELECT scan_hash, addr, hostname, os_name, open_port_count FROM v_hosts_most_open_ports LIMIT 100",
-          "rawQueryText": "SELECT scan_hash, addr, hostname, os_name, open_port_count FROM v_hosts_most_open_ports LIMIT 100",
+          "queryText": "SELECT h.scan_hash, h.addr, h.hostname, h.os_name, COUNT(CASE WHEN p.state IS NULL OR LOWER(TRIM(p.state)) = 'open' THEN 1 END) AS open_port_count FROM hosts h LEFT JOIN ports p ON p.scan_hash = h.scan_hash AND p.host_addr = h.addr GROUP BY h.scan_hash, h.addr ORDER BY open_port_count DESC LIMIT 100",
+          "rawQueryText": "SELECT h.scan_hash, h.addr, h.hostname, h.os_name, COUNT(CASE WHEN p.state IS NULL OR LOWER(TRIM(p.state)) = 'open' THEN 1 END) AS open_port_count FROM hosts h LEFT JOIN ports p ON p.scan_hash = h.scan_hash AND p.host_addr = h.addr GROUP BY h.scan_hash, h.addr ORDER BY open_port_count DESC LIMIT 100",
           "refId": "A",
           "timeColumns": []
         }
@@ -423,9 +444,10 @@
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
-          "queryText": "SELECT h.addr, h.hostname, h.mac, h.mac_vendor, h.os_name, h.os_accuracy, h.uptime_seconds, h.distance, h.state, s.imported_at, s.tags FROM hosts h JOIN scans s ON s.scan_hash = h.scan_hash ORDER BY s.imported_at DESC LIMIT 300",
-          "rawQueryText": "SELECT h.addr, h.hostname, h.mac, h.mac_vendor, h.os_name, h.os_accuracy, h.uptime_seconds, h.distance, h.state, s.imported_at, s.tags FROM hosts h JOIN scans s ON s.scan_hash = h.scan_hash ORDER BY s.imported_at DESC LIMIT 300",
+          "queryText": "SELECT h.addr, h.hostname, h.mac, h.mac_vendor, h.os_name, h.os_accuracy, h.uptime_seconds, h.distance, h.state, s.imported_at, s.tags FROM hosts h JOIN scans s ON s.scan_hash = h.scan_hash ORDER BY datetime(s.imported_at) DESC LIMIT 300",
+          "rawQueryText": "SELECT h.addr, h.hostname, h.mac, h.mac_vendor, h.os_name, h.os_accuracy, h.uptime_seconds, h.distance, h.state, s.imported_at, s.tags FROM hosts h JOIN scans s ON s.scan_hash = h.scan_hash ORDER BY datetime(s.imported_at) DESC LIMIT 300",
           "refId": "A",
           "timeColumns": []
         }
@@ -458,9 +480,10 @@
       "targets": [
         {
           "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "format": "table",
           "queryType": "table",
-          "queryText": "SELECT imported_at, host_addr, port_protocol, port_id, script_id, output_summary, substr(output_preview,1,200) AS preview, tags FROM v_nse_highlights ORDER BY imported_at DESC LIMIT 150",
-          "rawQueryText": "SELECT imported_at, host_addr, port_protocol, port_id, script_id, output_summary, substr(output_preview,1,200) AS preview, tags FROM v_nse_highlights ORDER BY imported_at DESC LIMIT 150",
+          "queryText": "SELECT s.imported_at, n.host_addr, n.port_protocol, n.port_id, n.script_id, n.output_summary, substr(n.output, 1, 200) AS preview, s.tags FROM nse_scripts n JOIN scans s ON s.scan_hash = n.scan_hash ORDER BY datetime(s.imported_at) DESC LIMIT 150",
+          "rawQueryText": "SELECT s.imported_at, n.host_addr, n.port_protocol, n.port_id, n.script_id, n.output_summary, substr(n.output, 1, 200) AS preview, s.tags FROM nse_scripts n JOIN scans s ON s.scan_hash = n.scan_hash ORDER BY datetime(s.imported_at) DESC LIMIT 150",
           "refId": "A",
           "timeColumns": []
         }
@@ -472,13 +495,13 @@
   "refresh": "30s",
   "schemaVersion": 39,
   "style": "dark",
-  "tags": ["nmap", "network", "sqlite"],
+  "tags": ["nmap", "network", "sqlite", "poder-judicial"],
   "templating": {"list": []},
   "time": {"from": "now-90d", "to": "now"},
   "timepicker": {},
-  "timezone": "",
-  "title": "Nmap → SQLite — Inventario",
-  "uid": "nmap-sqlite-inventory",
-  "version": 1,
+  "timezone": "browser",
+  "title": "Poder Judicial — Inventario",
+  "uid": "pj-nmap-inventario",
+  "version": 2,
   "weekStart": ""
 }

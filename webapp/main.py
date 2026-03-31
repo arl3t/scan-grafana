@@ -90,9 +90,20 @@ def page_dashboard() -> None:
             )
 
     with ui.column().classes("w-full max-w-7xl mx-auto p-4 gap-6"):
+        with ui.card().classes("w-full bg-slate-800/80 border border-emerald-900/40"):
+            ui.label("Guía y buenas prácticas").classes("text-emerald-400 font-semibold text-sm mb-2")
+            ui.markdown(config.SCAN_QUICK_TIPS_MARKDOWN.strip()).classes("text-slate-300 text-sm")
+
         with ui.card().classes("w-full bg-slate-800/90 border border-slate-600 shadow-lg"):
             ui.label("Nuevo escaneo").classes("text-lg font-medium text-slate-100 mb-1")
-            ui.label("Red u objetivos").classes("text-slate-400 text-sm")
+
+            preset_sel = ui.select(
+                config.PRESET_LABELS,
+                value=config.SCAN_PRESET_STANDARD,
+                label="Tipo de escaneo (perfil Nmap)",
+            ).classes("w-full max-w-2xl").props("outlined dense dark")
+
+            ui.label("Red u objetivos").classes("text-slate-400 text-sm mt-2")
             target_in = ui.textarea(
                 placeholder=(
                     "Ej.: 192.168.1.0/24\n"
@@ -107,15 +118,23 @@ def page_dashboard() -> None:
                 "Al finalizar, el XML se importa automáticamente al mismo SQLite que Grafana (`nmap_scans.db`)."
             ).classes("text-slate-500 text-xs mt-1")
 
-            with ui.expansion("Cómo se ejecuta el escaneo (comandos y destino DB)", icon="info").classes(
+            with ui.expansion("Cómo se ejecuta el escaneo (3 perfiles, comandos y destino DB)", icon="info").classes(
                 "w-full bg-slate-900/50 border border-slate-700 mt-3"
             ):
+                ui.markdown(config.scan_profiles_help_markdown().strip()).classes(
+                    "text-slate-300 text-sm max-w-none mb-4"
+                )
+                ui.element("hr").classes("w-full border-0 border-t border-slate-600 my-3")
+                ui.label("Vista previa con tu objetivo y perfil seleccionados").classes(
+                    "text-slate-400 text-xs uppercase tracking-wide mb-1"
+                )
                 cmd_preview = ui.markdown("Escribe un objetivo arriba para ver la vista previa.").classes(
                     "text-slate-300 text-sm max-w-none"
                 )
 
                 def refresh_cmd_preview() -> None:
-                    cmd_preview.content = preview_pipeline_markdown(target_in.value or "")
+                    pid = preset_sel.value or config.SCAN_PRESET_STANDARD
+                    cmd_preview.content = preview_pipeline_markdown(target_in.value or "", pid)
                     cmd_preview.update()
 
                 ui.timer(0.7, refresh_cmd_preview)
@@ -124,7 +143,7 @@ def page_dashboard() -> None:
             with ui.row().classes("w-full gap-3 flex-wrap items-end mt-4"):
                 ui.button("Ejecutar scan ahora", icon="radar", color="cyan").classes(
                     "px-6 py-3 text-base font-medium"
-                ).on_click(lambda: asyncio.create_task(_run_now(target_in)))
+                ).on_click(lambda: asyncio.create_task(_run_now(target_in, preset_sel)))
 
                 freq_sel = ui.select(
                     {
@@ -167,9 +186,15 @@ def page_dashboard() -> None:
                 )
 
             def refresh_db_banner() -> None:
-                n = db.count_scans_total()
+                n, err = db.scans_db_banner()
                 p = db.sqlite_path_resolved()
-                db_stat.set_text(f"Base de datos: {p}  ·  scans almacenados: {n}")
+                line = f"Base de datos: {p}  ·  scans almacenados: {n}"
+                if err:
+                    line += f"\n⚠ {err}"
+                    db_stat.classes(remove="text-emerald-300/90", add="text-amber-300/90")
+                else:
+                    db_stat.classes(remove="text-amber-300/90", add="text-emerald-300/90")
+                db_stat.set_text(line)
 
             ui.timer(3.0, refresh_db_banner)
             refresh_db_banner()
@@ -297,7 +322,9 @@ def _fill_active_cards(container: ui.column, jobs: list) -> None:
         for j in recent:
             with ui.card().classes("w-full bg-slate-900/80 border border-slate-700"):
                 with ui.row().classes("w-full items-center justify-between gap-2 flex-wrap"):
-                    ui.label(f"{j.id}  ·  {j.status.value}").classes("text-slate-200 font-mono text-sm")
+                    ui.label(f"{j.id}  ·  {j.status.value}  ·  {getattr(j, 'preset_id', 'standard')}").classes(
+                        "text-slate-200 font-mono text-sm"
+                    )
                     ui.label(j.target[:80]).classes("text-slate-400 text-xs truncate flex-1")
                     if j.status == ScanJobStatus.RUNNING:
                         ui.button(
@@ -312,13 +339,14 @@ def _fill_active_cards(container: ui.column, jobs: list) -> None:
                     ui.code(log_text or "(sin salida aún)").classes("w-full max-h-64 overflow-auto text-xs")
 
 
-async def _run_now(target_in: Any) -> None:
+async def _run_now(target_in: Any, preset_sel: Any) -> None:
     raw = (target_in.value or "").strip()
     if not raw:
         ui.notify("Indica la red o IPs a escanear.", type="warning")
         return
+    preset = (preset_sel.value or config.SCAN_PRESET_STANDARD).strip().lower()
     try:
-        jid = await scan_manager.start_scan(raw, tag="webui")
+        jid = await scan_manager.start_scan(raw, tag="webui", preset_id=preset)
         ui.notify(
             f"Scan {jid} en curso. En los logs verás el comando nmap, luego el de importación y la línea IMPORT_OK cuando se guarde en la DB.",
             type="positive",

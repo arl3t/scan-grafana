@@ -8,6 +8,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WEBAPP="$ROOT/webapp"
 
+# Rutas por defecto explícitas (evita DB/XML relativos al cwd si algo exporta vacío)
+export NMAP_SQLITE="${NMAP_SQLITE:-$ROOT/nmap_scans.db}"
+export NMAP_TO_SQLITE="${NMAP_TO_SQLITE:-$ROOT/nmap-to-sqlite.py}"
+export NMAP_XML_DIR="${NMAP_XML_DIR:-$ROOT/xml_scans}"
+
 if [[ ! -f "$WEBAPP/main.py" ]]; then
   echo "Error: no se encuentra $WEBAPP/main.py" >&2
   exit 1
