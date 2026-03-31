@@ -13,10 +13,18 @@ Herramientas para **importar salidas XML de Nmap** a **SQLite**, mantener **vari
 ```bash
 git clone <tu-repo> scan-grafana
 cd scan-grafana
-chmod +x run-nmap-scan.sh
+chmod +x run-nmap-scan.sh start.sh
 ```
 
 Opcional: añade el directorio al `PATH` o invoca los scripts con ruta absoluta.
+
+### Consola web (`start.sh`)
+
+```bash
+./start.sh
+```
+
+Levanta NiceGUI en `http://0.0.0.0:8080` por defecto (configurable con `NICEGUI_HOST` / `NICEGUI_PORT`). Activa `webapp/.venv` si existe e instala dependencias si hace falta.
 
 ## Flujo rápido
 

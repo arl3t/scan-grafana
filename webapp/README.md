@@ -34,12 +34,20 @@ Por defecto Nmap usa **TCP connect** (`-sT`) para no exigir root; para SYN/OS us
 
 ## Ejecución
 
+Desde la raíz del repositorio:
+
+```bash
+./start.sh
+```
+
+O manualmente:
+
 ```bash
 cd webapp
 python main.py
 ```
 
-Abre `http://127.0.0.1:8080` (o el puerto configurado).
+Abre `http://127.0.0.1:8080` (o el puerto configurado; con `./start.sh` el bind por defecto es `0.0.0.0`).
 
 ## Funciones
 
