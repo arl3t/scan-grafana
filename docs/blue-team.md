@@ -46,6 +46,8 @@ Install-Module -Name invoke-atomicredteam, powershell-yaml -Scope CurrentUser -F
 
 ### Instalación en Linux (Debian / Ubuntu)
 
+**Ubicación de referencia en este despliegue:** los repositorios viven bajo **`/home/horus/Blue-Team/AtomicRedTeam`** (usuario **horus**). Si tu usuario u organización de carpetas es distinta, sustituye por **`$HOME/Blue-Team/AtomicRedTeam`** o la ruta que uses.
+
 #### Paso 1 — PowerShell Core (`pwsh`)
 
 ```bash
@@ -63,11 +65,13 @@ sudo apt-get install -y powershell
 #### Paso 2 — Clonar repositorios
 
 ```bash
-mkdir -p ~/AtomicRedTeam
-cd ~/AtomicRedTeam
+mkdir -p /home/horus/Blue-Team/AtomicRedTeam
+cd /home/horus/Blue-Team/AtomicRedTeam
 git clone https://github.com/redcanaryco/atomic-red-team.git
 git clone https://github.com/redcanaryco/invoke-atomicredteam.git
 ```
+
+*(Ejecuta como usuario **horus** en su `$HOME`, o usa `mkdir -p "$HOME/Blue-Team/AtomicRedTeam"` en otro usuario.)*
 
 #### Paso 3 — Módulo en PowerShell
 
@@ -77,27 +81,33 @@ Abre `pwsh` y ejecuta **una** de estas opciones:
 Install-Module -Name invoke-atomicredteam, powershell-yaml -Scope CurrentUser -Force
 ```
 
-O instalación asistida:
+O instalación asistida (misma base que el clon manual):
 
 ```powershell
 IEX (IWR 'https://raw.githubusercontent.com/redcanaryco/invoke-atomicredteam/master/install-atomicredteam.ps1' -UseBasicParsing)
-Install-AtomicRedTeam -InstallPath ~/AtomicRedTeam -getAtomics
+Install-AtomicRedTeam -InstallPath /home/horus/Blue-Team/AtomicRedTeam -getAtomics
 ```
 
 #### Paso 4 — Importar el módulo
 
+Ruta alineada con la carpeta anterior:
+
 ```powershell
-Import-Module "$HOME/AtomicRedTeam/invoke-atomicredteam/Invoke-AtomicRedTeam.psd1" -Force
+Import-Module "/home/horus/Blue-Team/AtomicRedTeam/invoke-atomicredteam/Invoke-AtomicRedTeam.psd1" -Force
 ```
 
-(Ajusta la ruta si usaste otra carpeta.)
+Equivalente portable con `$HOME`:
+
+```powershell
+Import-Module "$HOME/Blue-Team/AtomicRedTeam/invoke-atomicredteam/Invoke-AtomicRedTeam.psd1" -Force
+```
 
 ### Ejecución manual (sin Invoke-AtomicRedTeam)
 
 1. Entra en el directorio del test, por ejemplo:
 
 ```bash
-cd atomic-red-team/atomics/T1059.003/
+cd /home/horus/Blue-Team/AtomicRedTeam/atomic-red-team/atomics/T1059.003/
 ```
 
 2. Abre el `.md` del test y localiza **Atomic Test #N** para tu SO.
