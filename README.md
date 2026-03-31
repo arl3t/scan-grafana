@@ -5,7 +5,7 @@ Herramientas para **importar salidas XML de Nmap** a **SQLite**, mantener **vari
 ## Requisitos
 
 - **Python 3.10+** (solo librería estándar).
-- **Nmap** instalado y, en la mayoría de sistemas Unix, privilegios **root** (o `sudo`) para `-sS` (SYN scan) y `-O` (detección de SO).
+- **Nmap** instalado. El perfil por defecto usa **`-sT -sV -O -T4`** (TCP connect, sin exigir root); `-O` puede ser más fiable con privilegios.
 - **Grafana** con el plugin **[SQLite Data Source](https://grafana.com/grafana/plugins/frser-sqlite-datasource)** (`frser-sqlite-datasource`).
 
 ## Instalación
@@ -80,7 +80,7 @@ python3 nmap-to-sqlite.py -d nmap_scans.db --force --tag Re-auditoria resultado.
 
 Ejecuta Nmap con un perfil orientado a inventario:
 
-`s -sS -sV -O --traceroute --open -T4 -oX <xml_timestamped>`
+`nmap -sT -sV -O -T4 -oX <xml_timestamped>`
 
 Luego llama a `nmap-to-sqlite.py` sobre ese XML.
 
@@ -101,7 +101,7 @@ Ejemplo:
 NMAP_TAGS="DMZ,Servidores" NMAP_IMPORT_EXTRA="--vacuum" ./run-nmap-scan.sh 10.0.0.0/24
 ```
 
-> **Nota:** `-sS` y `-O` suelen requerir capacidades elevadas; el script usa `sudo` si no eres root (salvo `NMAP_SKIP_SUDO=1`).
+> **Nota:** Con `-sT` suele bastar `NMAP_SKIP_SUDO=1`; el script usa `sudo` si no eres root y no lo indicas (por compatibilidad con otros flags que añadas en `NMAP_EXTRA_ARGS`).
 
 ## `maintenance.py` — Mantenimiento y vistas
 

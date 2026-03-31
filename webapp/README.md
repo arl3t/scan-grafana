@@ -51,7 +51,7 @@ Abre `http://127.0.0.1:8080` (o el puerto configurado; con `./start.sh` el bind 
 
 ## Funciones
 
-- **Dashboard**: **tres perfiles** de Nmap (solo hosts vivos / puertos+SO+traceroute / +vulners), campo **Red u objetivos**, tarjeta de **recomendaciones**, panel **«Cómo se ejecuta»** (tabla de perfiles + vista previa del comando), ruta de `nmap_scans.db`, terminal en vivo e **IMPORT_OK** con conteos.
+- **Dashboard**: **tres perfiles** de Nmap (núcleo común `-sT -sV -O -T4`; el tercero añade `vulners`), campo **Red u objetivos**, tarjeta de **recomendaciones**, panel **«Cómo se ejecuta»** (tabla + vista previa con `-oX`), ruta de `nmap_scans.db`, terminal en vivo e **IMPORT_OK** con conteos.
 - Programación (una vez / hora / 6h / 12h / diario), tarjetas de estado, cambios **MAC** / **puertos nuevos** (24h), **terminal en vivo** (verbose nmap + import) y enlace para abrir Grafana en otra pestaña.
 - **Historial** (`/history`): lista filtrable y detalle por scan (hosts, puertos, NSE/CVE).
 

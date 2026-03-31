@@ -34,6 +34,37 @@ def _safe_target_display(t: str) -> str:
     return t[:500]
 
 
+# Salidas a fichero distintas del XML de importación (se eliminan; el pipeline fija siempre -oX).
+_NMAP_OUTPUT_FILE_FLAGS = frozenset(("-oN", "-oG", "-oS", "-oX", "-oA"))
+
+
+def nmap_args_xml_results_only(args: list[str]) -> list[str]:
+    """
+    Quita flags que guardan resultados en otro formato; la app añade ``-oX <ruta.xml>``.
+    El resultado persistido del escaneo queda solo en XML para nmap-to-sqlite / Grafana.
+    """
+    out: list[str] = []
+    i = 0
+    n = len(args)
+    while i < n:
+        a = args[i]
+        skip = False
+        for flag in _NMAP_OUTPUT_FILE_FLAGS:
+            if a == flag:
+                i += 2 if i + 1 < n else 1
+                skip = True
+                break
+            if a.startswith(flag) and len(a) > len(flag):
+                i += 1
+                skip = True
+                break
+        if skip:
+            continue
+        out.append(a)
+        i += 1
+    return out
+
+
 def preview_pipeline_markdown(target_raw: str, preset_id: str = "standard") -> str:
     """
     Texto para la UI: comandos que se ejecutarán y destino de la base de datos.
@@ -47,7 +78,7 @@ def preview_pipeline_markdown(target_raw: str, preset_id: str = "standard") -> s
         return f"**{e}** — escribe al menos un objetivo (IP, CIDR o lista separada por comas)."
 
     xml_example = str(xml_dir / "ui_<job_id>_<timestamp>.xml")
-    nmap_args = config.nmap_args_for_preset(preset_id)
+    nmap_args = nmap_args_xml_results_only(config.nmap_args_for_preset(preset_id))
     nmap_parts = [
         config.NMAP_BINARY,
         *nmap_args,
@@ -68,7 +99,7 @@ def preview_pipeline_markdown(target_raw: str, preset_id: str = "standard") -> s
         f"**Destino de datos:** `{db}`  \n"
         f"**Importador:** `{imp}` ({exists})  \n\n"
         "---\n\n"
-        "**Paso 1 — Nmap** (genera XML):\n\n"
+        "**Paso 1 — Nmap** (resultado persistido **solo en XML** con `-oX`):\n\n"
         f"`{nmap_line}`\n\n"
         "**Paso 2 — Importación** (escribe en SQLite, mismo fichero que usa Grafana):\n\n"
         f"`{imp_line}`\n\n"
@@ -140,7 +171,13 @@ class ScanManager:
             config.XML_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
             xml_path = config.XML_OUTPUT_DIR / f"ui_{job.id}_{int(job.started_at)}.xml"
 
-            nmap_args = config.nmap_args_for_preset(preset_id)
+            raw_nmap_args = config.nmap_args_for_preset(preset_id)
+            nmap_args = nmap_args_xml_results_only(raw_nmap_args)
+            if nmap_args != raw_nmap_args:
+                job.append_log(
+                    "Nota: se quitaron flags de salida (-oN/-oG/-oS/-oA/-oX); "
+                    "el resultado persistido es solo el XML indicado por la consola."
+                )
             cmd = [
                 config.NMAP_BINARY,
                 *nmap_args,

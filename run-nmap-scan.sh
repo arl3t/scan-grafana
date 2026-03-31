@@ -9,7 +9,7 @@
 #   NMAP_TAGS        Tags separados por coma para el import (ej: Oficina,DMZ)
 #   NMAP_EXTRA_ARGS  Argumentos extra para nmap (entre comillas)
 #   NMAP_IMPORT_EXTRA  Argumentos extra para nmap-to-sqlite.py (ej: --vacuum)
-#   NMAP_SKIP_SUDO   Si es 1, no usa sudo (debes ser root para -sS/-O en muchos sistemas)
+#   NMAP_SKIP_SUDO   Si es 1, no usa sudo (recomendado con el núcleo -sT -sV -O -T4)
 #
 set -euo pipefail
 
@@ -34,7 +34,8 @@ fi
 
 mkdir -p "$XML_DIR"
 
-NMAP_CMD=(nmap -sS -sV -O --traceroute --open -T4 -oX "$OUT_XML")
+# Resultado del escaneo persistido únicamente en XML (mismo criterio que la consola web).
+NMAP_CMD=(nmap -sT -sV -O -T4 -oX "$OUT_XML")
 if [[ -n "${NMAP_EXTRA_ARGS:-}" ]]; then
   # shellcheck disable=SC2206
   NMAP_CMD+=(${NMAP_EXTRA_ARGS})
@@ -48,7 +49,7 @@ elif [[ "${EUID:-0}" -eq 0 ]]; then
   echo "[*] Ejecutando nmap como root: ${NMAP_CMD[*]}"
   "${NMAP_CMD[@]}"
 else
-  echo "[*] Ejecutando nmap con sudo (requerido para -sS / -O en la mayoría de Unix): ${NMAP_CMD[*]}"
+  echo "[*] Ejecutando nmap con sudo (usa NMAP_SKIP_SUDO=1 si no hace falta, p. ej. con -sT): ${NMAP_CMD[*]}"
   sudo "${NMAP_CMD[@]}"
 fi
 

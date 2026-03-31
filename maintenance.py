@@ -224,8 +224,15 @@ def export_query_csv(conn: sqlite3.Connection, sql: str, out_path: Path) -> int:
 
 
 def print_status(conn: sqlite3.Connection) -> None:
+    try:
+        n_scans = conn.execute("SELECT COUNT(*) FROM scans").fetchone()[0]
+    except sqlite3.OperationalError as e:
+        LOG.info("Tabla «scans» no existe o base ilegible: %s", e)
+        LOG.info("Tras un import correcto (web o nmap-to-sqlite.py) debería crearse el esquema.")
+        return
+
     one = lambda q: conn.execute(q).fetchone()[0]
-    LOG.info("scans:        %s", one("SELECT COUNT(*) FROM scans"))
+    LOG.info("scans:        %s", n_scans)
     LOG.info("hosts:        %s", one("SELECT COUNT(*) FROM hosts"))
     LOG.info("ports:        %s", one("SELECT COUNT(*) FROM ports"))
     LOG.info("traceroute:   %s", one("SELECT COUNT(*) FROM traceroute_hops"))
@@ -234,6 +241,25 @@ def print_status(conn: sqlite3.Connection) -> None:
         "SELECT MIN(imported_at), MAX(imported_at) FROM scans WHERE imported_at IS NOT NULL"
     ).fetchone()
     LOG.info("imported_at:  %s … %s", row[0], row[1])
+    if n_scans:
+        LOG.info("Últimos scans importados (5):")
+        for r in conn.execute(
+            """
+            SELECT scan_hash, imported_at, tags,
+                   substr(replace(trim(command_line), char(10), ' '), 1, 70) AS cmd_preview
+            FROM scans
+            ORDER BY datetime(imported_at) DESC
+            LIMIT 5
+            """
+        ):
+            h = r["scan_hash"] or ""
+            LOG.info(
+                "  %s… | %s | %s | %s",
+                h[:14],
+                r["imported_at"],
+                r["tags"] or "[]",
+                r["cmd_preview"] or "",
+            )
 
 
 def default_repo_root() -> Path:

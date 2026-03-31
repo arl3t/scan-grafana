@@ -42,9 +42,10 @@ GRAFANA_EXPLORE_PATH: str = os.environ.get("GRAFANA_EXPLORE_PATH", "/explore")
 # --- Nmap ---
 # Default: TCP connect scan (no root). Prefix with sudo in env NMAP_PREFIX if you use -sS -O.
 NMAP_BINARY: str = os.environ.get("NMAP_BINARY", "nmap")
+# No uses aquí -oN/-oG/-oA/-oX: la consola fuerza solo -oX <xml> para importar a SQLite.
 NMAP_EXTRA_ARGS: list[str] = os.environ.get(
     "NMAP_EXTRA_ARGS",
-    "-sT -sV --open -T4 -F --max-retries 1 --host-timeout 90s",
+    "-sT -sV -O -T4",
 ).split()
 MAX_CONCURRENT_SCANS: int = int(os.environ.get("MAX_CONCURRENT_SCANS", "3"))
 
@@ -53,52 +54,21 @@ SCAN_PRESET_DISCOVERY: str = "discovery"
 SCAN_PRESET_STANDARD: str = "standard"
 SCAN_PRESET_VULNERS: str = "vulners"
 
+# Núcleo común (la web añade siempre `-oX <ruta.xml>` antes del objetivo).
+_NMAP_CORE: tuple[str, ...] = ("-sT", "-sV", "-O", "-T4")
+
 NMAP_SCAN_PRESETS: dict[str, tuple[str, ...]] = {
-    # 1) Solo descubrimiento de hosts (sin enumeración de puertos). Muy rápido en /24.
-    SCAN_PRESET_DISCOVERY: (
-        "-sn",
-        "-T4",
-        "--max-retries",
-        "1",
-        "--host-timeout",
-        "45s",
-    ),
-    # 2) Puertos frecuentes, servicio/versión, SO, traceroute (sin root: -sT).
-    SCAN_PRESET_STANDARD: (
-        "-sT",
-        "-sV",
-        "-O",
-        "--traceroute",
-        "--open",
-        "-T4",
-        "-F",
-        "--max-retries",
-        "1",
-        "--host-timeout",
-        "120s",
-    ),
-    # 3) Igual que estándar + NSE vulners (requiere script instalado; más lento).
-    SCAN_PRESET_VULNERS: (
-        "-sT",
-        "-sV",
-        "-O",
-        "--traceroute",
-        "--open",
-        "-T4",
-        "-F",
-        "--script",
-        "vulners",
-        "--max-retries",
-        "1",
-        "--host-timeout",
-        "180s",
-    ),
+    # Perfiles 1 y 2: mismo comando base solicitado; reservados por si en el futuro divergen.
+    SCAN_PRESET_DISCOVERY: _NMAP_CORE,
+    SCAN_PRESET_STANDARD: _NMAP_CORE,
+    # Mismo núcleo + NSE vulners (CVE por versiones).
+    SCAN_PRESET_VULNERS: (*_NMAP_CORE, "--script", "vulners"),
 }
 
 PRESET_LABELS: dict[str, str] = {
-    SCAN_PRESET_DISCOVERY: "1 · Solo hosts vivos (sin puertos)",
-    SCAN_PRESET_STANDARD: "2 · Puertos, servicios, SO y traceroute",
-    SCAN_PRESET_VULNERS: "3 · Estándar + script vulners (CVE)",
+    SCAN_PRESET_DISCOVERY: "1 · -sT -sV -O -T4 (-oX en la app)",
+    SCAN_PRESET_STANDARD: "2 · -sT -sV -O -T4 (-oX en la app)",
+    SCAN_PRESET_VULNERS: "3 · -sT -sV -O -T4 + vulners (-oX en la app)",
 }
 
 
@@ -113,10 +83,10 @@ def nmap_args_for_preset(preset_id: str) -> list[str]:
 SCAN_QUICK_TIPS_MARKDOWN: str = """
 **Recomendaciones rápidas**
 
-- En redes **grandes o desconocidas**, usa primero el perfil **1 (solo hosts vivos)**; después el **2** sobre IPs o rangos concretos.
-- El perfil **3 (vulners)** aporta **CVE** pero es **más lento** y exige el script NSE `vulners` en tu instalación de Nmap.
+- Todos los perfiles usan el núcleo **`nmap -sT -sV -O -T4`**; la consola añade **`-oX <xml>`** y el objetivo.
+- El perfil **3 (vulners)** añade **`--script vulners`** (más lento; requiere el script en Nmap).
 - Todo lo importado queda en **`nmap_scans.db`** (esta consola, **Grafana** e informes).
-- **Solo** escanea redes y equipos **autorizados**. Sin `sudo`, Nmap usa **TCP connect** (`-sT`).
+- **Solo** escanea redes y equipos **autorizados**. Sin `sudo` se usa **TCP connect** (`-sT`).
 """
 
 
@@ -125,20 +95,19 @@ def scan_profiles_help_markdown() -> str:
     return """
 ### Tres tipos de escaneo
 
-| # | Perfil | Qué obtienes | Cuándo usarlo |
-|---|--------|----------------|---------------|
-| **1** | **Solo hosts vivos** | `nmap -sn …` — responde qué IPs están *up*; **no** lista puertos abiertos. | Inventario rápido de una red grande antes de profundizar. |
-| **2** | **Puertos + servicios + SO** | Top ports (`-F`), `-sV`, `-O`, `--traceroute`, solo `--open`. Rellena bien SQLite y Grafana. | Uso habitual: superficie de ataque y gráficos. |
-| **3** | **+ vulners** | Igual que (2) más `--script vulners` (CVE asociados a versiones). | Auditorías; **más lento** y el script debe existir en tu Nmap. |
+| # | Perfil | Comando (la app inserta `-oX` y el fichero XML) |
+|---|--------|--------------------------------------------------|
+| **1** | **Perfil 1** | `nmap -sT -sV -O -T4 -oX … <objetivo>` |
+| **2** | **Perfil 2** | Igual que (1) (mismo núcleo). |
+| **3** | **+ vulners** | `nmap -sT -sV -O -T4 --script vulners -oX … <objetivo>` |
 
 ---
 
 ### Recomendaciones
 
 - **Autorización:** escanea solo redes y sistemas para los que tengas permiso.
-- **Orden práctico:** en un /24 desconocido, prueba primero **(1)**; luego **(2)** sobre rangos o hosts concretos.
-- **Root / SYN:** sin `sudo`, la app usa **TCP connect** (`-sT`). Para `-sS` y a veces `-O` más fiable, ejecuta Nmap con privilegios (no está automatizado en la web).
-- **vulners:** si el script falla, revisa la salida en el terminal; en algunas instalaciones hace falta actualizar scripts NSE.
+- **Sin root:** `-sT` (TCP connect) no requiere privilegios; `-O` puede ser menos preciso que con root.
+- **vulners:** si el script falla, revisa la salida en el terminal; a veces hace falta actualizar scripts NSE.
 - **Datos:** todo termina en **`nmap_scans.db`** → historial en esta web, **Grafana** y `maintenance.py`.
 """
 

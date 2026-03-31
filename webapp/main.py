@@ -103,19 +103,29 @@ def page_dashboard() -> None:
                 label="Tipo de escaneo (perfil Nmap)",
             ).classes("w-full max-w-2xl").props("outlined dense dark")
 
-            ui.label("Red u objetivos").classes("text-slate-400 text-sm mt-2")
-            target_in = ui.textarea(
-                placeholder=(
-                    "Ej.: 192.168.1.0/24\n"
-                    "172.30.8.1-50\n"
-                    "10.0.0.1, 10.0.0.2\n"
-                    "(una red por línea o separadas por comas)"
+            with ui.column().classes(
+                "w-full mt-3 rounded-xl border-2 border-cyan-500/55 bg-slate-950/70 p-4 "
+                "shadow-[inset_0_1px_0_0_rgba(34,211,238,0.12)]"
+            ):
+                ui.label("Red u objetivos").classes(
+                    "text-cyan-200 font-semibold text-sm tracking-wide"
                 )
-            ).classes("w-full").props("outlined dark rows=4")
+                ui.label("Campo de texto — introduce hosts, CIDR o rangos").classes(
+                    "text-slate-500 text-xs mb-2 -mt-0.5"
+                )
+                target_in = ui.textarea(
+                    placeholder=(
+                        "Ej.: 192.168.1.0/24\n"
+                        "172.30.8.1-50\n"
+                        "10.0.0.1, 10.0.0.2\n"
+                        "(una red por línea o separadas por comas)"
+                    )
+                ).classes("w-full").props("outlined dark rows=5 color=cyan")
 
             db_stat = ui.label("").classes("text-emerald-300/90 text-xs mt-2 font-mono break-all")
             ui.label(
-                "Al finalizar, el XML se importa automáticamente al mismo SQLite que Grafana (`nmap_scans.db`)."
+                "Cada escaneo se guarda solo en XML (`-oX` en `xml_scans/`) y ese fichero es lo que se importa a "
+                "`nmap_scans.db` (Grafana). No se generan -oN/-oG/-oA desde la consola."
             ).classes("text-slate-500 text-xs mt-1")
 
             with ui.expansion("Cómo se ejecuta el escaneo (3 perfiles, comandos y destino DB)", icon="info").classes(
@@ -271,6 +281,9 @@ def page_dashboard() -> None:
 
             with ui.row().classes("gap-3 flex-wrap items-center mb-2"):
                 only_running = ui.checkbox("Solo scans en ejecución", value=False).classes("text-slate-300 text-sm")
+                ui.label(
+                    "(Si está marcado, igual se muestran las últimas líneas de jobs recién terminados, p. ej. IMPORT_OK.)"
+                ).classes("text-slate-500 text-xs max-w-md")
                 ui.button(
                     "Limpiar terminal",
                     icon="delete_sweep",
@@ -286,13 +299,21 @@ def page_dashboard() -> None:
 
             async def tail_verbose_terminal() -> None:
                 jobs = await scan_manager.list_jobs_ordered()
+                seen: dict[str, int] = term_state["seen"]
                 if only_running.value:
-                    jobs = [j for j in jobs if j.status == ScanJobStatus.RUNNING]
+                    # Incluir terminados que aún tengan líneas sin volcar (evita perder IMPORT_OK al pasar a completed).
+                    running = [j for j in jobs if j.status == ScanJobStatus.RUNNING]
+                    pending_tail = [
+                        j
+                        for j in jobs
+                        if j.status != ScanJobStatus.RUNNING
+                        and len(j.logs) > seen.get(j.id, 0)
+                    ]
+                    jobs = running + pending_tail
                 jobs = sorted(
                     jobs,
                     key=lambda j: (0 if j.status == ScanJobStatus.RUNNING else 1, -(j.started_at or 0)),
-                )[:10]
-                seen: dict[str, int] = term_state["seen"]
+                )[:30]
                 for j in jobs:
                     lines = list(j.logs)
                     prev = seen.get(j.id, 0)
@@ -368,14 +389,17 @@ async def _notify_when_scan_finishes(job_id: str, max_wait: int = 7200) -> None:
             return
         if job.status == ScanJobStatus.COMPLETED:
             log_text = "\n".join(job.logs)
+            last_imp = next(
+                (ln for ln in reversed(job.logs) if "IMPORT_" in ln),
+                None,
+            )
             if "IMPORT_OK" in log_text:
-                ui.notify(
-                    "Resultado guardado en nmap_scans.db (ver resumen en el log del job).",
-                    type="positive",
-                    timeout=8000,
-                )
+                msg = "Importación OK — datos en nmap_scans.db."
+                if last_imp:
+                    msg += f" {last_imp[:220]}{'…' if len(last_imp) > 220 else ''}"
+                ui.notify(msg, type="positive", timeout=10000)
             else:
-                ui.notify("Scan terminó pero revisa el log (importación).", type="warning", timeout=6000)
+                ui.notify("Scan marcado completado pero no hay línea IMPORT_OK en el log.", type="warning", timeout=8000)
             return
         if job.status in (ScanJobStatus.FAILED, ScanJobStatus.STOPPED):
             ui.notify(
