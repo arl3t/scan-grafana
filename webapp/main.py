@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-NiceGUI web UI: concurrent nmap scans, scheduling, SQLite history, Grafana embed.
+NiceGUI web UI: concurrent nmap scans, scheduling, SQLite history, live verbose terminal.
 Run: python main.py   (from the webapp/ directory)
 """
 
 from __future__ import annotations
 
 import asyncio
-import time
 import webbrowser
+from typing import Any
 
 from nicegui import app, ui
 
 import config
 import database as db
 from models import ScanJobStatus, ScheduleFrequency
-from scanner import scan_manager
+from scanner import preview_pipeline_markdown, scan_manager
 from scheduler import schedule_service
 
 
@@ -36,6 +36,34 @@ scan_manager.set_notify(TICK.bump)
 def _grafana_url(path: str) -> str:
     p = path if path.startswith("/") else f"/{path}"
     return f"{config.GRAFANA_BASE_URL}{p}"
+
+
+def _terminal_line_classes(line: str) -> str | None:
+    """Clases Tailwind por tipo de línea (verbose nmap / import)."""
+    if line.startswith("$"):
+        return "text-amber-300"
+    if "IMPORT_OK" in line:
+        return "text-emerald-400 font-medium"
+    if "IMPORT_FAIL" in line or line.startswith("ERROR"):
+        return "text-red-400"
+    if "Starting Nmap" in line or "Nmap done" in line or "Nmap scan report" in line:
+        return "text-sky-300"
+    return "text-green-500/90"
+
+
+def _log_push(log_el: Any, line: str, classes: str | None = None) -> None:
+    try:
+        if classes:
+            log_el.push(line, classes=classes)
+        else:
+            log_el.push(line)
+    except TypeError:
+        log_el.push(line)
+
+
+def _clear_scan_terminal(log_el: Any, term_state: dict[str, dict[str, int]]) -> None:
+    log_el.clear()
+    term_state["seen"].clear()
 
 
 def _tailwind() -> None:
@@ -63,11 +91,37 @@ def page_dashboard() -> None:
 
     with ui.column().classes("w-full max-w-7xl mx-auto p-4 gap-6"):
         with ui.card().classes("w-full bg-slate-800/90 border border-slate-600 shadow-lg"):
-            ui.label("Nuevo escaneo").classes("text-lg font-medium text-slate-100 mb-2")
-            target_in = ui.input(
-                placeholder="IP, CIDR o lista separada por comas (ej. 10.0.0.1, 172.16.0.0/24)"
-            ).classes("w-full").props("outlined dense dark")
-            with ui.row().classes("w-full gap-3 flex-wrap items-end mt-3"):
+            ui.label("Nuevo escaneo").classes("text-lg font-medium text-slate-100 mb-1")
+            ui.label("Red u objetivos").classes("text-slate-400 text-sm")
+            target_in = ui.textarea(
+                placeholder=(
+                    "Ej.: 192.168.1.0/24\n"
+                    "172.30.8.1-50\n"
+                    "10.0.0.1, 10.0.0.2\n"
+                    "(una red por línea o separadas por comas)"
+                )
+            ).classes("w-full").props("outlined dark rows=4")
+
+            db_stat = ui.label("").classes("text-emerald-300/90 text-xs mt-2 font-mono break-all")
+            ui.label(
+                "Al finalizar, el XML se importa automáticamente al mismo SQLite que Grafana (`nmap_scans.db`)."
+            ).classes("text-slate-500 text-xs mt-1")
+
+            with ui.expansion("Cómo se ejecuta el escaneo (comandos y destino DB)", icon="info").classes(
+                "w-full bg-slate-900/50 border border-slate-700 mt-3"
+            ):
+                cmd_preview = ui.markdown("Escribe un objetivo arriba para ver la vista previa.").classes(
+                    "text-slate-300 text-sm max-w-none"
+                )
+
+                def refresh_cmd_preview() -> None:
+                    cmd_preview.content = preview_pipeline_markdown(target_in.value or "")
+                    cmd_preview.update()
+
+                ui.timer(0.7, refresh_cmd_preview)
+                refresh_cmd_preview()
+
+            with ui.row().classes("w-full gap-3 flex-wrap items-end mt-4"):
                 ui.button("Ejecutar scan ahora", icon="radar", color="cyan").classes(
                     "px-6 py-3 text-base font-medium"
                 ).on_click(lambda: asyncio.create_task(_run_now(target_in)))
@@ -111,6 +165,14 @@ def page_dashboard() -> None:
                 ui.button("Añadir programación", icon="schedule", on_click=lambda: asyncio.create_task(_sched())).props(
                     "outline color=white"
                 )
+
+            def refresh_db_banner() -> None:
+                n = db.count_scans_total()
+                p = db.sqlite_path_resolved()
+                db_stat.set_text(f"Base de datos: {p}  ·  scans almacenados: {n}")
+
+            ui.timer(3.0, refresh_db_banner)
+            refresh_db_banner()
 
         with ui.row().classes("w-full gap-4 flex-wrap"):
             with ui.card().classes("bg-slate-800/80 border border-slate-600 p-4 min-w-[200px] flex-1"):
@@ -166,38 +228,61 @@ def page_dashboard() -> None:
             _fill_active_cards(active_box, jobs)
 
         with ui.card().classes("w-full bg-slate-800/90 border border-slate-600"):
-            ui.label("Grafana").classes("text-lg font-medium text-slate-100 mb-2")
-            with ui.row().classes("gap-2 flex-wrap"):
-                ui.link("Dashboard principal", _grafana_url(config.GRAFANA_MAIN_DASHBOARD_PATH), new_tab=True).classes(
-                    "text-cyan-400"
+            ui.label("Terminal en vivo (verbose)").classes("text-lg font-medium text-slate-100 mb-1")
+            ui.label(
+                "Salida en tiempo real de nmap y del import a SQLite. "
+                "Grafana sigue disponible desde el enlace del header o abajo."
+            ).classes("text-slate-500 text-xs mb-3")
+
+            term_log = (
+                ui.log(max_lines=2000)
+                .classes(
+                    "w-full rounded border border-slate-700 bg-[#0d1117] p-2 "
+                    "font-mono text-[13px] leading-snug shadow-inner"
                 )
-                ui.link("Explore", _grafana_url(config.GRAFANA_EXPLORE_PATH), new_tab=True).classes("text-cyan-400")
+                .style("min-height: 52vh; max-height: 72vh; overflow-y: auto")
+            )
+            term_state: dict[str, dict[str, int]] = {"seen": {}}
+
+            with ui.row().classes("gap-3 flex-wrap items-center mb-2"):
+                only_running = ui.checkbox("Solo scans en ejecución", value=False).classes("text-slate-300 text-sm")
                 ui.button(
-                    "Abrir Grafana en navegador",
+                    "Limpiar terminal",
+                    icon="delete_sweep",
+                    on_click=lambda: _clear_scan_terminal(term_log, term_state),
+                ).props("outline dense color=grey")
+                ui.link("Dashboard Grafana ↗", _grafana_url(config.GRAFANA_MAIN_DASHBOARD_PATH), new_tab=True).classes(
+                    "text-cyan-400 text-sm"
+                )
+                ui.button(
                     icon="open_in_browser",
                     on_click=lambda: webbrowser.open(_grafana_url(config.GRAFANA_MAIN_DASHBOARD_PATH)),
-                ).props("flat color=cyan")
+                ).props("flat dense color=cyan")
 
-            grafana_iframe_url = (
-                _grafana_url(config.GRAFANA_MAIN_DASHBOARD_PATH) + f"?kiosk&refresh=30s&t={int(time.time())}"
-            )
-            iframe = (
-                ui.element("iframe")
-                .classes("w-full rounded border border-slate-600 bg-black")
-                .style("height: min(70vh, 800px); min-height: 400px")
-                .props(f'src="{grafana_iframe_url}" frameborder="0"')
-            )
+            async def tail_verbose_terminal() -> None:
+                jobs = await scan_manager.list_jobs_ordered()
+                if only_running.value:
+                    jobs = [j for j in jobs if j.status == ScanJobStatus.RUNNING]
+                jobs = sorted(
+                    jobs,
+                    key=lambda j: (0 if j.status == ScanJobStatus.RUNNING else 1, -(j.started_at or 0)),
+                )[:10]
+                seen: dict[str, int] = term_state["seen"]
+                for j in jobs:
+                    lines = list(j.logs)
+                    prev = seen.get(j.id, 0)
+                    if prev > len(lines):
+                        prev = 0
+                    if prev == 0 and lines:
+                        hdr = f"═══ {j.id}  [{j.status.value}]  {j.target} ═══"
+                        _log_push(term_log, hdr, "text-cyan-400")
+                    for i in range(prev, len(lines)):
+                        ln = lines[i]
+                        cls = _terminal_line_classes(ln)
+                        _log_push(term_log, ln, cls)
+                    seen[j.id] = len(lines)
 
-            def reload_frame() -> None:
-                new_url = (
-                    _grafana_url(config.GRAFANA_MAIN_DASHBOARD_PATH) + f"?kiosk&refresh=30s&t={int(time.time())}"
-                )
-                iframe.props(f'src="{new_url}"')
-                iframe.update()
-
-            ui.button("Refrescar iframe", icon="refresh", on_click=reload_frame).props("outline color=white dense").classes(
-                "my-2"
-            )
+            ui.timer(0.35, lambda: asyncio.create_task(tail_verbose_terminal()))
 
         ui.timer(1.2, lambda: asyncio.create_task(refresh_summary()))
         ui.timer(2.0, lambda: asyncio.create_task(rebuild_active()))
@@ -227,12 +312,50 @@ def _fill_active_cards(container: ui.column, jobs: list) -> None:
                     ui.code(log_text or "(sin salida aún)").classes("w-full max-h-64 overflow-auto text-xs")
 
 
-async def _run_now(target_in: ui.input) -> None:
+async def _run_now(target_in: Any) -> None:
+    raw = (target_in.value or "").strip()
+    if not raw:
+        ui.notify("Indica la red o IPs a escanear.", type="warning")
+        return
     try:
-        jid = await scan_manager.start_scan(target_in.value or "", tag="webui")
-        ui.notify(f"Scan iniciado: {jid}", type="positive")
+        jid = await scan_manager.start_scan(raw, tag="webui")
+        ui.notify(
+            f"Scan {jid} en curso. En los logs verás el comando nmap, luego el de importación y la línea IMPORT_OK cuando se guarde en la DB.",
+            type="positive",
+            timeout=6000,
+        )
+        asyncio.create_task(_notify_when_scan_finishes(jid))
+    except ValueError as e:
+        ui.notify(str(e), type="warning")
     except Exception as e:
         ui.notify(str(e), type="negative")
+
+
+async def _notify_when_scan_finishes(job_id: str, max_wait: int = 7200) -> None:
+    """Avisa cuando el job termina y si los datos llegaron a nmap_scans.db."""
+    for _ in range(max_wait):
+        await asyncio.sleep(1.25)
+        job = await scan_manager.get_job(job_id)
+        if job is None:
+            return
+        if job.status == ScanJobStatus.COMPLETED:
+            log_text = "\n".join(job.logs)
+            if "IMPORT_OK" in log_text:
+                ui.notify(
+                    "Resultado guardado en nmap_scans.db (ver resumen en el log del job).",
+                    type="positive",
+                    timeout=8000,
+                )
+            else:
+                ui.notify("Scan terminó pero revisa el log (importación).", type="warning", timeout=6000)
+            return
+        if job.status in (ScanJobStatus.FAILED, ScanJobStatus.STOPPED):
+            ui.notify(
+                job.error_message or f"Estado: {job.status.value} — ver logs del job.",
+                type="negative",
+                timeout=8000,
+            )
+            return
 
 
 async def _stop_job(job_id: str) -> None:

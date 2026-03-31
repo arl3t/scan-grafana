@@ -43,7 +43,8 @@ Abre `http://127.0.0.1:8080` (o el puerto configurado).
 
 ## Funciones
 
-- **Dashboard**: target (IP/CIDR/lista), ejecución inmediata, programación (una vez / hora / 6h / 12h / diario), tarjetas de estado, detección de **cambios de MAC** y **puertos nuevos** (24h), lista de jobs con logs en vivo, iframe Grafana.
+- **Dashboard**: campo **Red u objetivos** (textarea: varias líneas o comas), ejecución inmediata, ruta absoluta de `nmap_scans.db` y total de scans, panel **«Cómo se ejecuta»** con los comandos `nmap` e importación, logs en vivo con ambas líneas `$ …` y confirmación **IMPORT_OK** con conteo hosts/puertos en la DB.
+- Programación (una vez / hora / 6h / 12h / diario), tarjetas de estado, cambios **MAC** / **puertos nuevos** (24h), **terminal en vivo** (verbose nmap + import) y enlace para abrir Grafana en otra pestaña.
 - **Historial** (`/history`): lista filtrable y detalle por scan (hosts, puertos, NSE/CVE).
 
 Las programaciones se guardan en `webapp/data/schedules.json`.

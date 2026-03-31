@@ -29,6 +29,19 @@ def get_connection() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+def count_scans_total() -> int:
+    try:
+        with get_connection() as conn:
+            row = conn.execute("SELECT COUNT(*) AS c FROM scans").fetchone()
+        return int(row["c"]) if row else 0
+    except sqlite3.Error:
+        return 0
+
+
+def sqlite_path_resolved() -> str:
+    return str(config.SQLITE_PATH.resolve())
+
+
 def fetch_scans(
     limit: int = 200,
     date_from: str | None = None,

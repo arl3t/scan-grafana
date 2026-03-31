@@ -5,6 +5,8 @@ Concurrent nmap execution + import into SQLite (non-blocking for NiceGUI).
 from __future__ import annotations
 
 import asyncio
+import shlex
+import sqlite3
 import sys
 import uuid
 from collections import deque
@@ -16,17 +18,60 @@ from models import ScanJob, ScanJobStatus
 
 
 def normalize_target(raw: str) -> str:
-    """Turn comma-separated IPs into nmap target string."""
+    """IPs, CIDRs: separados por comas o por líneas → argumentos para nmap."""
     t = raw.strip()
     if not t:
         raise ValueError("Target vacío")
-    # allow single string with commas
-    parts = [p.strip() for p in t.split(",") if p.strip()]
+    parts: list[str] = []
+    for chunk in t.replace("\n", ",").split(","):
+        s = chunk.strip()
+        if s:
+            parts.append(s)
     return " ".join(parts)
 
 
 def _safe_target_display(t: str) -> str:
     return t[:500]
+
+
+def preview_pipeline_markdown(target_raw: str) -> str:
+    """
+    Texto para la UI: comandos que se ejecutarán y destino de la base de datos.
+    """
+    db = config.SQLITE_PATH.resolve()
+    xml_dir = config.XML_OUTPUT_DIR.resolve()
+    imp = config.NMAP_TO_SQLITE.resolve()
+    try:
+        nt = normalize_target(target_raw)
+    except ValueError as e:
+        return f"**{e}** — escribe al menos un objetivo (IP, CIDR o lista separada por comas)."
+
+    xml_example = str(xml_dir / "ui_<job_id>_<timestamp>.xml")
+    nmap_parts = [
+        config.NMAP_BINARY,
+        *config.NMAP_EXTRA_ARGS,
+        "-oX",
+        xml_example,
+        *nt.split(),
+    ]
+    nmap_line = " ".join(shlex.quote(p) for p in nmap_parts)
+    imp_line = (
+        f"{shlex.quote(sys.executable)} {shlex.quote(str(imp))} "
+        f"-d {shlex.quote(str(db))} --tag webui "
+        f"`{xml_dir}/ui_<job_id>_<timestamp>.xml`"
+    )
+    exists = "✓ existe" if config.NMAP_TO_SQLITE.is_file() else "✗ no encontrado (revisa ruta)"
+    return (
+        f"**Destino de datos:** `{db}`  \n"
+        f"**Importador:** `{imp}` ({exists})  \n\n"
+        "---\n\n"
+        "**Paso 1 — Nmap** (genera XML):\n\n"
+        f"`{nmap_line}`\n\n"
+        "**Paso 2 — Importación** (escribe en SQLite, mismo fichero que usa Grafana):\n\n"
+        f"`{imp_line}`\n\n"
+        "Tras un **IMPORT_OK** en el log, las tablas `scans`, `hosts`, `ports` y `nse_scripts` "
+        "incluyen este run."
+    )
 
 
 class ScanManager:
@@ -137,6 +182,16 @@ class ScanManager:
 
             job.xml_path = str(xml_path.resolve())
             job.append_log("Importando a SQLite…")
+            imp_cmd = [
+                sys.executable,
+                str(config.NMAP_TO_SQLITE.resolve()),
+                "-d",
+                str(config.SQLITE_PATH.resolve()),
+                "--tag",
+                tag,
+                job.xml_path,
+            ]
+            job.append_log("$ " + " ".join(shlex.quote(p) for p in imp_cmd))
             await self._notify_safe()
 
             imp = await asyncio.get_event_loop().run_in_executor(
@@ -175,9 +230,30 @@ class ScanManager:
             text=True,
             timeout=600,
         )
-        if r.returncode == 0:
-            return "IMPORT_OK"
-        return f"IMPORT_FAIL: {r.stderr or r.stdout or r.returncode}"
+        if r.returncode != 0:
+            return f"IMPORT_FAIL: {r.stderr or r.stdout or r.returncode}"
+        try:
+            conn = sqlite3.connect(str(config.SQLITE_PATH.resolve()), timeout=30.0)
+            row = conn.execute(
+                """
+                SELECT s.scan_hash, s.imported_at,
+                       (SELECT COUNT(*) FROM hosts h WHERE h.scan_hash = s.scan_hash),
+                       (SELECT COUNT(*) FROM ports p WHERE p.scan_hash = s.scan_hash)
+                FROM scans s
+                ORDER BY datetime(s.imported_at) DESC
+                LIMIT 1
+                """
+            ).fetchone()
+            conn.close()
+        except sqlite3.Error as e:
+            return f"IMPORT_OK (no se pudo verificar DB: {e})"
+        if row:
+            h, p = int(row[2] or 0), int(row[3] or 0)
+            return (
+                f"IMPORT_OK → escrito en {config.SQLITE_PATH.name} | "
+                f"scan …{row[0][:12]} | {row[1]} | hosts={h} puertos={p}"
+            )
+        return "IMPORT_OK (tabla scans vacía tras import — revisa permisos o ruta DB)"
 
     async def stop_scan(self, job_id: str) -> bool:
         async with self._lock:
