@@ -26,6 +26,8 @@ Opcional: añade el directorio al `PATH` o invoca los scripts con ruta absoluta.
 
 Levanta NiceGUI en `http://0.0.0.0:8080` por defecto (configurable con `NICEGUI_HOST` / `NICEGUI_PORT`). Activa `webapp/.venv` si existe e instala dependencias si hace falta.
 
+En la consola web: ruta **`/blue-team`** (y tarjeta en el inicio) con guías de **Blue Team** — Atomic Red Team, Wireshark y OpenVAS; el Markdown fuente está en **[docs/blue-team.md](docs/blue-team.md)**.
+
 ## Flujo rápido
 
 1. Ejecuta un escaneo e importa a la base (wrapper):
