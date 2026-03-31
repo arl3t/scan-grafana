@@ -1,0 +1,19 @@
+# Datos locales de escaneo / SQLite
+nmap_scans.db
+nmap_scans.db-journal
+xml_scans/*.xml
+webapp/data/schedules.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDE / OS
+.DS_Store
+.idea/
+.vscode/

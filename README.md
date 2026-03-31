@@ -34,6 +34,10 @@ Opcional: añade el directorio al `PATH` o invoca los scripts con ruta absoluta.
 
 3. En Grafana, configura un datasource SQLite apuntando a `nmap_scans.db` e importa `nmap-dashboard.json`.
 
+### Interfaz web (NiceGUI, opcional)
+
+Consola en el navegador: scans concurrentes, programación, historial SQLite e iframe de Grafana. Ver **[webapp/README.md](webapp/README.md)** (`cd webapp && pip install -r requirements.txt && python main.py`).
+
 ## `nmap-to-sqlite.py` — Importador
 
 Importa uno o más XML (`-oX`) en una base SQLite.
