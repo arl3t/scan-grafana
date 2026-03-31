@@ -6,13 +6,18 @@ Run: python main.py   (from the webapp/ directory)
 
 from __future__ import annotations
 
+import os
+
+# Antes de NiceGUI/APScheduler: tzlocal advierte si /etc/timezone existe y está deprecado (p. ej. Debian reciente).
+if "TZ" not in os.environ:
+    os.environ["TZ"] = "UTC"
+
 import asyncio
 import webbrowser
 from typing import Any
 
-from nicegui import app, ui
-
 import config
+from nicegui import app, ui
 import database as db
 from models import ScanJobStatus, ScheduleFrequency
 from scanner import preview_pipeline_markdown, scan_manager
@@ -606,29 +611,56 @@ def page_blue_team() -> None:
     with ui.column().classes("w-full min-h-screen cyber-grid-bg"):
         with ui.row().classes(_C_TOPBAR):
             ui.button(icon="arrow_back", on_click=lambda: ui.navigate.to("/")).props("flat color=grey")
-            ui.label("// Blue Team").classes("text-xl font-semibold text-cyan-400 cyber-font-head")
-            with ui.row().classes("gap-1"):
+            ui.label("// Blue Team").classes(
+                "text-2xl sm:text-[1.65rem] font-semibold text-cyan-400 cyber-font-head"
+            )
+            with ui.row().classes("gap-1 items-center"):
                 ui.button(icon="history", on_click=lambda: ui.navigate.to("/history")).props(
                     "flat color=grey"
                 ).tooltip("Historial")
                 ui.link("Grafana ↗", _grafana_url(config.GRAFANA_MAIN_DASHBOARD_PATH), new_tab=True).classes(
-                    "text-cyan-400 text-sm cyber-font-mono"
+                    "text-cyan-400 text-base sm:text-[1.05rem] cyber-font-mono"
                 )
 
-        with ui.column().classes("w-full max-w-4xl mx-auto p-4 sm:p-6 gap-4 pb-16"):
+        with ui.column().classes(
+            "w-full max-w-5xl xl:max-w-6xl mx-auto px-4 sm:px-8 py-6 sm:py-8 gap-6 pb-20"
+        ):
             ui.label("Atomic Red Team · Wireshark · OpenVAS").classes(
-                "text-slate-500 text-xs uppercase tracking-widest cyber-font-head"
+                "text-slate-400 text-sm sm:text-base uppercase tracking-widest cyber-font-head"
             )
-            with ui.card().classes(f"w-full {_C_CARD}"):
+            with ui.card().classes(f"w-full {_C_CARD} p-6 sm:p-8 md:p-10 overflow-x-auto shadow-xl"):
+                # Cuerpo ~+30% respecto a text-sm (≈1.14rem) + jerarquía clara para lectura larga
                 ui.markdown(body).classes(
-                    "text-slate-300 text-sm max-w-none leading-relaxed [&_a]:text-cyan-400 "
-                    "[&_code]:text-amber-200/90 [&_h1]:text-emerald-400 [&_h2]:text-emerald-400/95 "
-                    "[&_h3]:text-cyan-400/90 [&_pre]:bg-black/50 [&_pre]:p-3 [&_pre]:rounded-lg"
+                    "text-slate-200 max-w-none "
+                    "text-[1.14rem] sm:text-[1.2rem] leading-[1.75] "
+                    "[&_p]:mb-4 [&_p]:mt-0 "
+                    "[&_h1]:text-emerald-400 [&_h1]:text-[1.95rem] sm:[&_h1]:text-[2.25rem] "
+                    "[&_h1]:font-bold [&_h1]:mt-12 [&_h1]:mb-5 [&_h1]:first:mt-0 "
+                    "[&_h1]:pb-3 [&_h1]:border-b [&_h1]:border-emerald-500/30 "
+                    "[&_h2]:text-emerald-400/95 [&_h2]:text-[1.5rem] sm:[&_h2]:text-[1.65rem] "
+                    "[&_h2]:font-semibold [&_h2]:mt-10 [&_h2]:mb-4 "
+                    "[&_h3]:text-cyan-400/90 [&_h3]:text-[1.25rem] sm:[&_h3]:text-[1.35rem] "
+                    "[&_h3]:font-semibold [&_h3]:mt-8 [&_h3]:mb-3 "
+                    "[&_h4]:text-slate-200 [&_h4]:text-[1.12rem] [&_h4]:font-medium [&_h4]:mt-6 [&_h4]:mb-2 "
+                    "[&_a]:text-cyan-400 [&_a]:underline [&_a]:underline-offset-2 hover:[&_a]:text-cyan-300 "
+                    "[&_strong]:text-slate-100 [&_strong]:font-semibold "
+                    "[&_code]:text-amber-200/95 [&_code]:text-[1.05em] [&_code]:px-2 [&_code]:py-0.5 "
+                    "[&_code]:rounded-md [&_code]:bg-black/45 [&_code]:font-mono "
+                    "[&_pre]:bg-black/55 [&_pre]:p-4 sm:[&_pre]:p-5 [&_pre]:rounded-xl "
+                    "[&_pre]:text-[1.05rem] sm:[&_pre]:text-[1.1rem] [&_pre]:leading-relaxed "
+                    "[&_pre]:overflow-x-auto [&_pre]:my-5 [&_pre]:border [&_pre]:border-emerald-900/40 "
+                    "[&_ul]:my-5 [&_ol]:my-5 [&_li]:my-2 [&_li]:ml-5 [&_li]:pl-1 "
+                    "[&_blockquote]:border-l-4 [&_blockquote]:border-cyan-500/40 [&_blockquote]:pl-4 "
+                    "[&_blockquote]:my-5 [&_blockquote]:text-slate-400 "
+                    "[&_table]:w-full [&_table]:my-6 [&_table]:text-[1.05rem] "
+                    "[&_th]:text-left [&_th]:p-3 [&_th]:bg-black/30 [&_th]:text-emerald-300/90 "
+                    "[&_td]:p-3 [&_td]:align-top [&_tr]:border-b [&_tr]:border-slate-600/50 "
+                    "[&_hr]:my-10 [&_hr]:border-slate-600/60"
                 )
 
             ui.label(
                 "Fuente en el repo: docs/blue-team.md · Edita ese archivo para actualizar esta vista."
-            ).classes("text-slate-600 text-xs cyber-font-mono text-center")
+            ).classes("text-slate-500 text-sm sm:text-[1.05rem] cyber-font-mono text-center px-2")
 
 
 def _show_scan_dialog(dlg: ui.dialog, scan_hash: str) -> None:

@@ -13,6 +13,9 @@ export NMAP_SQLITE="${NMAP_SQLITE:-$ROOT/nmap_scans.db}"
 export NMAP_TO_SQLITE="${NMAP_TO_SQLITE:-$ROOT/nmap-to-sqlite.py}"
 export NMAP_XML_DIR="${NMAP_XML_DIR:-$ROOT/xml_scans}"
 
+# Zona horaria explícita: reduce avisos de tzlocal por /etc/timezone obsoleto (systemd puede exportar TZ).
+export TZ="${TZ:-UTC}"
+
 if [[ ! -f "$WEBAPP/main.py" ]]; then
   echo "Error: no se encuentra $WEBAPP/main.py" >&2
   exit 1

@@ -29,8 +29,10 @@ pip install -r requirements.txt
 | `NMAP_EXTRA_ARGS` | Argumentos extra de nmap (separados por espacio) |
 | `MAX_CONCURRENT_SCANS` | Límite de scans simultáneos (default 3) |
 | `NICEGUI_HOST` / `NICEGUI_PORT` | Bind del servidor (default `0.0.0.0:8080`) |
+| `TZ` | Zona horaria IANA (p. ej. `Europe/Madrid`). Si no está definida, `start.sh` y `main.py` usan `UTC` y evitan avisos de **tzlocal** por `/etc/timezone` obsoleto en algunas distros. |
+| `SCHEDULER_TZ` | Opcional; si existe, tiene prioridad sobre `TZ` para **APScheduler** (cron / intervalos). |
 
-Por defecto Nmap usa **TCP connect** (`-sT`) para no exigir root; para SYN/OS usa `sudo` y cambia `NMAP_EXTRA_ARGS` o el binario.
+En servidores Debian/Ubuntu recientes puedes **borrar** `/etc/timezone` si solo genera ruido y fijas `TZ` en **systemd** o en `start.sh`.
 
 ## Ejecución
 

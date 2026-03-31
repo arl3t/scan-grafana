@@ -115,5 +115,10 @@ def scan_profiles_help_markdown() -> str:
 HOST: str = os.environ.get("NICEGUI_HOST", "0.0.0.0")
 PORT: int = int(os.environ.get("NICEGUI_PORT", "8080"))
 
+# IANA, p. ej. UTC, Europe/Madrid. Evita que APScheduler/tzlocal dependan de /etc/timezone (deprecado en algunas distros).
+SCHEDULER_TIMEZONE: str = (
+    (os.environ.get("SCHEDULER_TZ") or os.environ.get("TZ") or "UTC").strip() or "UTC"
+)
+
 # Persist scheduled jobs
 SCHEDULE_STORE: Path = Path(os.environ.get("SCHEDULE_STORE", Path(__file__).resolve().parent / "data" / "schedules.json"))

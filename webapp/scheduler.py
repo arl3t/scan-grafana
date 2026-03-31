@@ -64,7 +64,7 @@ def save_specs(specs: list[ScheduledJobSpec]) -> None:
 
 class ScheduleService:
     def __init__(self) -> None:
-        self.scheduler = AsyncIOScheduler()
+        self.scheduler = AsyncIOScheduler(timezone=config.SCHEDULER_TIMEZONE)
         self._specs: list[ScheduledJobSpec] = []
         self._runner: ScanRunner | None = None
 
