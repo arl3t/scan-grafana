@@ -137,8 +137,9 @@ _C_CARD = (
     "rounded-xl border border-emerald-500/20 bg-zinc-950/80 backdrop-blur-md "
     "shadow-[0_0_0_1px_rgba(16,185,129,0.06),0_12px_40px_rgba(0,0,0,0.45)]"
 )
-_C_HEADER = (
-    "items-center justify-between border-b border-emerald-500/25 "
+# Barra superior (no usar ui.header dentro de ui.column: NiceGUI exige layout top-level directo al page)
+_C_TOPBAR = (
+    "w-full items-center justify-between flex-wrap gap-3 border-b border-emerald-500/25 "
     "bg-[#0a1018]/95 backdrop-blur-md shadow-[0_4px_24px_rgba(0,0,0,0.5)] px-4 py-3"
 )
 
@@ -149,7 +150,7 @@ def page_dashboard() -> None:
     ui.dark_mode(True)
 
     with ui.column().classes("w-full min-h-screen cyber-grid-bg"):
-        with ui.header().classes(_C_HEADER):
+        with ui.row().classes(_C_TOPBAR):
             with ui.row().classes("items-center gap-3"):
                 ui.label("SEC // SCAN").classes(
                     "text-lg sm:text-xl font-bold text-emerald-400 cyber-font-head uppercase"
@@ -545,7 +546,7 @@ def page_history() -> None:
     ui.dark_mode(True)
 
     with ui.column().classes("w-full min-h-screen cyber-grid-bg"):
-        with ui.header().classes(_C_HEADER):
+        with ui.row().classes(_C_TOPBAR):
             ui.button(icon="arrow_back", on_click=lambda: ui.navigate.to("/")).props("flat color=grey")
             ui.label("// Historial SQLite").classes("text-xl font-semibold text-emerald-400 cyber-font-head")
             ui.button(icon="shield", on_click=lambda: ui.navigate.to("/blue-team")).props(
@@ -603,7 +604,7 @@ def page_blue_team() -> None:
     body = _load_repo_markdown("docs/blue-team.md")
 
     with ui.column().classes("w-full min-h-screen cyber-grid-bg"):
-        with ui.header().classes(_C_HEADER):
+        with ui.row().classes(_C_TOPBAR):
             ui.button(icon="arrow_back", on_click=lambda: ui.navigate.to("/")).props("flat color=grey")
             ui.label("// Blue Team").classes("text-xl font-semibold text-cyan-400 cyber-font-head")
             with ui.row().classes("gap-1"):
