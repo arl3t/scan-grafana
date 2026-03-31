@@ -4,6 +4,7 @@ SQLite access for the existing nmap_scans.db schema (scans, hosts, ports, nse_sc
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import sqlite3
 from contextlib import contextmanager
@@ -13,10 +14,37 @@ import config
 from models import ChangeHighlight, NseRow, PortRow, ScanRow
 
 
+def _load_importer_module():
+    path = config.NMAP_TO_SQLITE.resolve()
+    if not path.is_file():
+        raise FileNotFoundError(str(path))
+    spec = importlib.util.spec_from_file_location("nmap_to_sqlite_db", path)
+    if spec is None or spec.loader is None:
+        raise FileNotFoundError(str(path))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _ensure_scans_schema(conn: sqlite3.Connection) -> None:
+    """Crea tablas base (scans, hosts, …) si el fichero existe pero aún no tiene esquema."""
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scans' LIMIT 1"
+    ).fetchone()
+    if row:
+        return
+    try:
+        mod = _load_importer_module()
+        mod.ensure_schema(conn)
+    except (FileNotFoundError, OSError, sqlite3.Error):
+        return
+
+
 def _conn() -> sqlite3.Connection:
     config.SQLITE_PATH.parent.mkdir(parents=True, exist_ok=True)
     c = sqlite3.connect(str(config.SQLITE_PATH), timeout=30.0)
     c.row_factory = sqlite3.Row
+    _ensure_scans_schema(c)
     return c
 
 
@@ -48,9 +76,11 @@ def scans_db_banner() -> tuple[int, str | None]:
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='scans' LIMIT 1"
             ).fetchone()
             if not t:
+                imp = str(config.NMAP_TO_SQLITE.resolve())
                 return (
                     0,
-                    "No hay tabla «scans» (archivo vacío o sin import). Revisa el log del job: IMPORT_OK / IMPORT_FAIL.",
+                    "No hay tabla «scans» y no se pudo aplicar el esquema. "
+                    f"Comprueba que exista el importador: {imp} y permisos de escritura en la base.",
                 )
             row = conn.execute("SELECT COUNT(*) AS c FROM scans").fetchone()
         return int(row["c"]) if row else 0, None
