@@ -1,0 +1,484 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_SQLITE",
+      "label": "SQLite (Nmap DB)",
+      "description": "Datasource frser-sqlite-datasource apuntando a nmap_scans.db",
+      "type": "datasource",
+      "pluginId": "frser-sqlite-datasource",
+      "pluginName": "SQLite"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {"type": "grafana", "uid": "-- Grafana --"},
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "semi-dark-blue", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "id": 1,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT COUNT(*) AS value FROM hosts",
+          "rawQueryText": "SELECT COUNT(*) AS value FROM hosts",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Hosts (filas)",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "semi-dark-orange", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "id": 2,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT COUNT(*) AS value FROM ports WHERE state IS NULL OR LOWER(TRIM(state)) = 'open'",
+          "rawQueryText": "SELECT COUNT(*) AS value FROM ports WHERE state IS NULL OR LOWER(TRIM(state)) = 'open'",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Puertos abiertos",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "semi-dark-green", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT COUNT(*) AS value FROM scans",
+          "rawQueryText": "SELECT COUNT(*) AS value FROM scans",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Escaneos importados",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "semi-dark-purple", "value": null}]},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "id": 4,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false},
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT COUNT(*) AS value FROM nse_scripts",
+          "rawQueryText": "SELECT COUNT(*) AS value FROM nse_scripts",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Salidas NSE",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "hideFrom": {"legend": false, "tooltip": false, "viz": false}
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "id": 5,
+      "options": {
+        "legend": {"displayMode": "list", "placement": "right", "showLegend": true},
+        "pieType": "pie",
+        "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": true},
+        "tooltip": {"mode": "single", "sort": "none"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT os_name, host_count FROM v_os_distribution LIMIT 12",
+          "rawQueryText": "SELECT os_name, host_count FROM v_os_distribution LIMIT 12",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Distribución de SO (v_os_distribution)",
+      "type": "piechart"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {"legend": false, "tooltip": false, "viz": false},
+            "lineWidth": 1,
+            "scaleDistribution": {"type": "linear"},
+            "thresholdsStyle": {"mode": "off"}
+          },
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 16, "x": 0, "y": 4},
+      "id": 6,
+      "options": {
+        "barRadius": 0,
+        "barWidth": 0.6,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {"mode": "single", "sort": "none"},
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT service_name, occurrences FROM v_top_services LIMIT 15",
+          "rawQueryText": "SELECT service_name, occurrences FROM v_top_services LIMIT 15",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Top servicios (puertos abiertos)",
+      "type": "barchart"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 30,
+            "gradientMode": "opacity",
+            "hideFrom": {"legend": false, "tooltip": false, "viz": false},
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {"type": "linear"},
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"},
+            "thresholdsStyle": {"mode": "off"}
+          },
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+      "id": 7,
+      "options": {
+        "legend": {"calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "single", "sort": "none"}
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT CAST(strftime('%s', day_utc) AS INTEGER) AS time, scans_imported, hosts_recorded FROM v_scans_timeline ORDER BY day_utc ASC",
+          "rawQueryText": "SELECT CAST(strftime('%s', day_utc) AS INTEGER) AS time, scans_imported, hosts_recorded FROM v_scans_timeline ORDER BY day_utc ASC",
+          "refId": "A",
+          "timeColumns": ["time"]
+        }
+      ],
+      "title": "Evolución: escaneos e hosts por día (imported_at)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {"type": "auto"},
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 20},
+      "id": 8,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "imported_at"}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT imported_at, tags, host_count, open_port_count, substr(command_line,1,120) AS cmd FROM v_scan_summary ORDER BY imported_at DESC LIMIT 100",
+          "rawQueryText": "SELECT imported_at, tags, host_count, open_port_count, substr(command_line,1,120) AS cmd FROM v_scan_summary ORDER BY imported_at DESC LIMIT 100",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Resumen de escaneos",
+      "type": "table"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {"type": "auto"},
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 30},
+      "id": 9,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "imported_at"}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT imported_at, host_addr, portid, protocol, service_name, product, tags FROM v_dangerous_open_ports ORDER BY imported_at DESC LIMIT 200",
+          "rawQueryText": "SELECT imported_at, host_addr, portid, protocol, service_name, product, tags FROM v_dangerous_open_ports ORDER BY imported_at DESC LIMIT 200",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Puertos de interés (lista predefinida)",
+      "type": "table"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {"type": "auto"},
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 30},
+      "id": 10,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "open_port_count"}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT scan_hash, addr, hostname, os_name, open_port_count FROM v_hosts_most_open_ports LIMIT 100",
+          "rawQueryText": "SELECT scan_hash, addr, hostname, os_name, open_port_count FROM v_hosts_most_open_ports LIMIT 100",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Hosts con más puertos abiertos",
+      "type": "table"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {"type": "auto"},
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 12, "w": 24, "x": 0, "y": 40},
+      "id": 11,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "imported_at"}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT h.addr, h.hostname, h.mac, h.mac_vendor, h.os_name, h.os_accuracy, h.uptime_seconds, h.distance, h.state, s.imported_at, s.tags FROM hosts h JOIN scans s ON s.scan_hash = h.scan_hash ORDER BY s.imported_at DESC LIMIT 300",
+          "rawQueryText": "SELECT h.addr, h.hostname, h.mac, h.mac_vendor, h.os_name, h.os_accuracy, h.uptime_seconds, h.distance, h.state, s.imported_at, s.tags FROM hosts h JOIN scans s ON s.scan_hash = h.scan_hash ORDER BY s.imported_at DESC LIMIT 300",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Detalle de hosts",
+      "type": "table"
+    },
+    {
+      "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {"type": "auto"},
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}]}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 10, "w": 24, "x": 0, "y": 52},
+      "id": 12,
+      "options": {
+        "cellHeight": "sm",
+        "footer": {"countRows": false, "fields": "", "reducer": ["sum"], "show": false},
+        "showHeader": true,
+        "sortBy": [{"desc": true, "displayName": "imported_at"}]
+      },
+      "targets": [
+        {
+          "datasource": {"type": "frser-sqlite-datasource", "uid": "${DS_SQLITE}"},
+          "queryType": "table",
+          "queryText": "SELECT imported_at, host_addr, port_protocol, port_id, script_id, output_summary, substr(output_preview,1,200) AS preview, tags FROM v_nse_highlights ORDER BY imported_at DESC LIMIT 150",
+          "rawQueryText": "SELECT imported_at, host_addr, port_protocol, port_id, script_id, output_summary, substr(output_preview,1,200) AS preview, tags FROM v_nse_highlights ORDER BY imported_at DESC LIMIT 150",
+          "refId": "A",
+          "timeColumns": []
+        }
+      ],
+      "title": "Scripts NSE (resumen)",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["nmap", "network", "sqlite"],
+  "templating": {"list": []},
+  "time": {"from": "now-90d", "to": "now"},
+  "timepicker": {},
+  "timezone": "",
+  "title": "Nmap → SQLite — Inventario",
+  "uid": "nmap-sqlite-inventory",
+  "version": 1,
+  "weekStart": ""
+}
